@@ -10,9 +10,7 @@ on:
   workflow_dispatch: # 允许在网页端手动点击触发
 
 jobs:
-  # ====================================================
   # 任务 1: 构建 Android APK
-  # ====================================================
   build-android:
     name: Build Android
     runs-on: ubuntu-latest
@@ -69,117 +67,108 @@ jobs:
           name: android-apk
           path: ./ncmdump_mobile/build/app/outputs/flutter-apk/app-release.apk
 
-  # ====================================================
-  # 任务 2: 构建 Windows Exe
-  # ====================================================
+# ================= Windows =================
   build-windows:
     name: Build Windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-
-      # 编译 Go 核心库 (.dll)
       - name: Build Go Library (Windows)
         working-directory: ./exc
         run: |
           go build -ldflags "-s -w" -buildmode=c-shared -o ../ncmdump_mobile/windows/runner/ncmdump.dll ./desktop
-
       - name: Build Windows Release
         working-directory: ./ncmdump_mobile
         run: flutter build windows --release
-
-      # 打包成 Zip
-      - name: Archive Windows Build
-        run: |
-          compress-archive -Path ./ncmdump_mobile/build/windows/x64/runner/Release/* -DestinationPath ncmdump-windows.zip
-
+      
+      # [修改] 不要在构建阶段压缩，直接上传目录
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-zip
-          path: ncmdump-windows.zip
+          name: ncmdump-windows-folder # 名字叫 folder 以示区别
+          path: ./ncmdump_mobile/build/windows/x64/runner/Release
 
-  # ====================================================
-  # 任务 3: 构建 Linux App (新增)
-  # ====================================================
+  # ================= Linux =================
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # 1. 安装 Linux 编译依赖 (GTK, Ninja 等)
       - name: Install Linux Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-
-      # 2. 编译 Go 核心库 (.so)
       - name: Build Go Library (Linux)
         working-directory: ./exc
         run: |
-          # 编译出 libncmdump.so 并放入 linux 目录
           go build -ldflags "-s -w" -buildmode=c-shared -o ../ncmdump_mobile/linux/libncmdump.so ./desktop
-
-      # 3. 构建 Linux Release 版
       - name: Build Linux Release
         working-directory: ./ncmdump_mobile
         run: flutter build linux --release
 
-      # 4. 打包 (Linux 通常打成 tar.gz)
-      - name: Archive Linux Build
-        run: |
-          # flutter build linux 的产物在 build/linux/x64/release/bundle/
-          tar -czf ncmdump-linux.tar.gz -C ncmdump_mobile/build/linux/x64/release/bundle .
-
+      # [修改] 不要在构建阶段压缩，直接上传目录
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-tar
-          path: ncmdump-linux.tar.gz
+          name: ncmdump-linux-folder
+          path: ./ncmdump_mobile/build/linux/x64/release/bundle
 
-  # ====================================================
-  # 任务 4: 发布 Release (聚合所有平台)
-  # ====================================================
+# ================= Release (修改：下载后压缩并发布) =================
   create-release:
     name: Create Release
-    # 依赖这三个任务都成功才执行
     needs: [build-android, build-windows, build-linux] 
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      # 下载所有 Artifacts。它们会被放入以 artifact name 命名的子目录中
       - name: Download Artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # [新增] 在发布前进行打包
+      - name: Archive Builds
+        run: |
+          # 1. 处理 Windows (进入下载的目录进行压缩，避免多层文件夹)
+          cd artifacts/ncmdump-windows-folder
+          zip -r ../../ncmdump-windows.zip .
+          cd ../..
+          
+          # 2. 处理 Linux
+          cd artifacts/ncmdump-linux-folder
+          tar -czf ../../ncmdump-linux.tar.gz .
+          cd ../..
+          
+          # 3. 移动 APK (如果是单文件 artifact，download-artifact v4 可能会直接下载文件或放在目录下)
+          # 检查 APK 位置，通常 v4 会建立 artifacts/app-release.apk/app-release.apk 或者直接文件
+          # 为了保险，我们用 find 找一下并移动出来
+          find artifacts -name "*.apk" -exec cp {} . \;
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            android-apk/app-release.apk
-            windows-zip/ncmdump-windows.zip
-            linux-tar/ncmdump-linux.tar.gz
+            *.apk
+            ncmdump-windows.zip
+            ncmdump-linux.tar.gz
           draft: false
           prerelease: false
           generate_release_notes: true
