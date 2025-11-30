@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// 引入服务文件
 import 'ncmdump_service.dart';
 
 void main() {
@@ -29,15 +28,13 @@ class NcmFile {
   String errorMessage;
 
   NcmFile(this.path)
-      // 使用 Platform.pathSeparator 自动适配 Windows(\) 和 Android(/)
       : name = path.split(Platform.pathSeparator).last,
         status = ProcessStatus.pending,
         errorMessage = "";
 }
 
-// 文件组类
 class FileGroup {
-  final String groupName; // 目录路径或"手动添加"
+  final String groupName;
   final List<NcmFile> files;
 
   FileGroup(this.groupName, this.files);
@@ -111,12 +108,10 @@ class FileListModel extends ChangeNotifier {
 
   // --- 权限逻辑 ---
   Future<bool> checkAndRequestPermission(BuildContext context) async {
-    // Windows 平台不需要请求外部存储权限
     if (Platform.isWindows || Platform.isLinux) return true;
 
     if (!Platform.isAndroid) return true;
     
-    // 使用 permission_handler 处理安卓权限
     final androidInfo = await DeviceInfoPlugin().androidInfo;
     final int sdkInt = androidInfo.version.sdkInt;
 
@@ -182,7 +177,6 @@ class FileListModel extends ChangeNotifier {
   }
 
   Future<void> scanDirectory(String path, BuildContext context, {bool silent = false}) async {
-    // 权限检查
     if (!await checkAndRequestPermission(context)) return;
 
     final dir = Directory(path);
@@ -276,11 +270,9 @@ class FileListModel extends ChangeNotifier {
     _isProcessing = true;
     notifyListeners();
 
-    // 目录适配：Windows 传空字符串由 Go 后端处理为源目录；Android 默认传 Music
     String defaultDir = (Platform.isWindows || Platform.isLinux) ? "" : "/storage/emulated/0/Music";
     String targetDir = _outputDirectory ?? defaultDir;
 
-    // 尝试创建目录（如果指定了目录且不是安卓默认目录）
     if (targetDir.isNotEmpty) {
        try {
         final dir = Directory(targetDir);
@@ -288,7 +280,7 @@ class FileListModel extends ChangeNotifier {
           await dir.create(recursive: true);
         }
       } catch (e) {
-        targetDir = ""; // 创建失败回退
+        targetDir = ""; 
       }
     }
 
@@ -300,7 +292,6 @@ class FileListModel extends ChangeNotifier {
         file.errorMessage = "";
         notifyListeners();
 
-        // 调用统一的 Service，自动识别平台
         String? error = await NcmDumpService.convertFile(file.path, targetDir);
         
         if (error == null) {
@@ -330,22 +321,18 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
-        //设置字体回退，解决 Windows 上中文显示为日文字形的问题
         fontFamilyFallback: const ["Microsoft YaHei", "SimHei", "Noto Sans SC"],
       ),
-      
-      //本地化配置
-      locale: const Locale('zh', 'CN'), // 显式指定中文
+      locale: const Locale('zh', 'CN'),
       supportedLocales: const [
-        Locale('zh', 'CN'), // 简体中文
-        //Locale('en', 'US'), // 英文
+        Locale('zh', 'CN'),
+        //Locale('en', 'US'),
       ],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-
       home: const HomePage(),
     );
   }
@@ -368,6 +355,12 @@ class HomePage extends StatelessWidget {
         title: const Text('NCM 转换器'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          // [新增] 刷新按钮，用于桌面端备份或手动刷新
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: '重新扫描所有目录',
+            onPressed: model.isProcessing ? null : () => model.scanAllHistory(context),
+          ),
           IconButton(
             icon: Icon(model.isExpandedMode ? Icons.compress : Icons.expand),
             tooltip: model.isExpandedMode ? "收起文件名" : "展开完整文件名",
@@ -393,7 +386,6 @@ class HomePage extends StatelessWidget {
                     : _compactPath(model.outputDirectory!),
                 style: TextStyle(
                   color: model.outputDirectory == null ? Colors.grey[700] : Colors.black,
-                  // [修改点] 将 FontStyle.italic 改为 normal，避免在桌面端看起来非常倾斜模糊
                   fontStyle: FontStyle.normal, 
                 ),
               ),
@@ -423,7 +415,7 @@ class HomePage extends StatelessWidget {
                       children: const [
                         Icon(Icons.library_music, size: 64, color: Colors.black12),
                         SizedBox(height: 16),
-                        Text("点击下方按钮添加，或下拉刷新历史记录", style: TextStyle(color: Colors.grey)),
+                        Text("点击下方按钮添加，或使用右上角刷新历史", style: TextStyle(color: Colors.grey)),
                       ],
                     ),
                   )

@@ -13,14 +13,6 @@
 * **智能分组**：自动按目录分组显示文件，清晰直观。
 * **目录历史**：记住你添加过的目录，支持下拉刷新，一键重新扫描所有历史目录。
 
-<div style="display:none">
-## 🛠️ 技术栈
-
-* **Frontend**: Flutter (Dart)
-* **Backend/Core**: Go (Golang) via `gomobile`
-* **State Management**: Provider
-</div>
-
 ## 🚀 编译指南
 
 如果你想自己编译这个项目，请按照以下步骤操作。
@@ -83,6 +75,8 @@ flutter build apk --release
   * `device_info_plus`: 获取 Android 版本信息
 
 ## ⚖️ 免责声明
+
+本项目基于[MIT](LICENSE)开源，不提供担保。
 
 本项目仅供学习和技术研究使用。请勿将本软件用于任何商业用途或侵犯第三方版权的行为。使用本软件产生的任何法律后果由使用者自行承担。
 
