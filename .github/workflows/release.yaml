@@ -45,6 +45,7 @@ jobs:
       - name: Build Go Library (Android)
         working-directory: ./exc
         run: |
+          mkdir -p ../ncmdump_mobile/android/app/libs
           gomobile bind -target=android -androidapi 21 -ldflags="-s -w" -o ../ncmdump_mobile/android/app/libs/ncmdump.aar ./mobile
 
       # 处理签名（如果有配置 Secrets）
