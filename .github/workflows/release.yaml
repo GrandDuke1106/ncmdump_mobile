@@ -1,21 +1,34 @@
 name: Build and Release
 
 # 触发规则：
-# 1. 推送到 main 分支时触发构建（测试用）
-# 2. 推送以 'v' 开头的 tag 时触发构建并发布（如 v1.0.0）
+# 1. 推送到 main 分支时触发构建（测试用，生成带 commit id 的包）
+# 2. 推送以 'v' 开头的 tag 时触发构建并发布（如 v1.0.0，生成带 tag 的包）
 on:
   push:
     branches: [ "main" ]
     tags: [ "v*" ]
-  workflow_dispatch: # 允许在网页端手动点击触发
+  workflow_dispatch:
 
 jobs:
-  # 任务 1: 构建 Android APK
+  # ================= Android =================
   build-android:
     name: Build Android
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # [新增] 获取版本号步骤
+      # 如果是 Tag 推送，VERSION = v1.0.0
+      # 如果是 Commit 推送，VERSION = dev-e025c7a (dev-前缀 + 7位 commit hash)
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            echo "VERSION=dev-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          fi
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -39,15 +52,12 @@ jobs:
           go install golang.org/x/mobile/cmd/gomobile@latest
           gomobile init
 
-      # 编译 Go 核心库 (.aar)
       - name: Build Go Library (Android)
         working-directory: ./exc
         run: |
           mkdir -p ../ncmdump_mobile/android/app/libs
           gomobile bind -target=android -androidapi 21 -ldflags="-s -w" -o ../ncmdump_mobile/android/app/libs/ncmdump.aar ./mobile
 
-      # 处理签名（如果有配置 Secrets）
-      # 如果你不想配置签名，确保 build.gradle 里的 signingConfigs 是可选的，或者删除这一步
       - name: Configure Keystore
         working-directory: ./ncmdump_mobile
         run: |
@@ -57,22 +67,45 @@ jobs:
           echo "keyAlias=upload" >> android/key.properties
           echo "storeFile=upload-keystore.jks" >> android/key.properties
 
+      # [修改] 增加 --split-per-abi 参数进行分包
       - name: Build APK
         working-directory: ./ncmdump_mobile
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
 
+      # [新增] 重命名 APK 文件，带上版本号和架构名
+      - name: Rename APKs
+        working-directory: ./ncmdump_mobile/build/app/outputs/flutter-apk
+        run: |
+          mv app-arm64-v8a-release.apk ncmdump-mobile-${{ env.VERSION }}-android-arm64.apk
+          mv app-armeabi-v7a-release.apk ncmdump-mobile-${{ env.VERSION }}-android-armv7.apk
+          mv app-x86_64-release.apk ncmdump-mobile-${{ env.VERSION }}-android-x64.apk
+          
+          rm -f app-release.apk app.apk
+
+      # [修改] 上传所有重命名后的 APK，Artifact 名称也带上版本号
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
-          path: ./ncmdump_mobile/build/app/outputs/flutter-apk/app-release.apk
+          name: ncmdump-mobile-${{ env.VERSION }}-android-apks
+          path: ./ncmdump_mobile/build/app/outputs/flutter-apk/*.apk
 
-# ================= Windows =================
+  # ================= Windows =================
   build-windows:
     name: Build Windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      
+      # [新增] 获取版本号 (Windows Powershell 语法不同，但 Actions 中可以用 bash)
+      - name: Get Version
+        shell: bash
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            echo "VERSION=dev-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          fi
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -89,11 +122,11 @@ jobs:
         working-directory: ./ncmdump_mobile
         run: flutter build windows --release
       
-      # [修改] 不要在构建阶段压缩，直接上传目录
+      # [修改] Artifact 名称带上版本号
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ncmdump-windows-folder # 名字叫 folder 以示区别
+          name: ncmdump-mobile-${{ env.VERSION }}-windows-folder
           path: ./ncmdump_mobile/build/windows/x64/runner/Release
 
   # ================= Linux =================
@@ -102,6 +135,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      # [新增] 获取版本号
+      - name: Get Version
+        shell: bash
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            echo "VERSION=dev-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          fi
+
       - name: Install Linux Dependencies
         run: |
           sudo apt-get update
@@ -122,14 +166,14 @@ jobs:
         working-directory: ./ncmdump_mobile
         run: flutter build linux --release
 
-      # [修改] 不要在构建阶段压缩，直接上传目录
+      # [修改] Artifact 名称带上版本号
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ncmdump-linux-folder
+          name: ncmdump-mobile-${{ env.VERSION }}-linux-folder
           path: ./ncmdump_mobile/build/linux/x64/release/bundle
 
-# ================= Release (修改：下载后压缩并发布) =================
+  # ================= Release =================
   create-release:
     name: Create Release
     needs: [build-android, build-windows, build-linux] 
@@ -138,28 +182,40 @@ jobs:
     permissions:
       contents: write
     steps:
-      # 下载所有 Artifacts。它们会被放入以 artifact name 命名的子目录中
+      - uses: actions/checkout@v4 # 需要 checkout 来获取 git commit hash (虽然这里主要用 tag)
+
+      # [新增] 获取版本号，用于文件名
+      - name: Get Version
+        shell: bash
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      # [修改] 下载所有 Artifacts
+      # 因为 Artifact 名称现在包含动态版本号，我们使用 pattern 来匹配
+      # merge-multiple: false 会保持文件夹结构，方便我们分别处理
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: ncmdump-mobile-*
+          merge-multiple: false
 
-      # [新增] 在发布前进行打包
       - name: Archive Builds
         run: |
-          # 1. 处理 Windows (进入下载的目录进行压缩，避免多层文件夹)
-          cd artifacts/ncmdump-windows-folder
-          zip -r ../../ncmdump-windows.zip .
-          cd ../..
+          WIN_DIR=$(find artifacts -type d -name "*-windows-folder" | head -n 1)
+          if [ -d "$WIN_DIR" ]; then
+            cd "$WIN_DIR"
+            zip -r ../../ncmdump-mobile-${{ env.VERSION }}-windows.zip .
+            cd ../..
+          fi
           
-          # 2. 处理 Linux
-          cd artifacts/ncmdump-linux-folder
-          tar -czf ../../ncmdump-linux.tar.gz .
-          cd ../..
+          LINUX_DIR=$(find artifacts -type d -name "*-linux-folder" | head -n 1)
+          if [ -d "$LINUX_DIR" ]; then
+            cd "$LINUX_DIR"
+            tar -czf ../../ncmdump-mobile-${{ env.VERSION }}-linux.tar.gz .
+            cd ../..
+          fi
           
-          # 3. 移动 APK (如果是单文件 artifact，download-artifact v4 可能会直接下载文件或放在目录下)
-          # 检查 APK 位置，通常 v4 会建立 artifacts/app-release.apk/app-release.apk 或者直接文件
-          # 为了保险，我们用 find 找一下并移动出来
           find artifacts -name "*.apk" -exec cp {} . \;
 
       - name: Create Release
@@ -167,8 +223,8 @@ jobs:
         with:
           files: |
             *.apk
-            ncmdump-windows.zip
-            ncmdump-linux.tar.gz
+            *.zip
+            *.tar.gz
           draft: false
           prerelease: false
           generate_release_notes: true
