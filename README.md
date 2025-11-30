@@ -48,9 +48,9 @@
 # 确保你已经编写了 mobile/bridge.go 桥接文件，当然mobile有一个现成的
 # 如果遇到 javac 报错，请检查 JAVA_HOME 环境变量
 cd exc
-gomobile bind -target=android -androidapi 21 -o ../ncmdump_mobile/android/app/libs/ncmdump.aar
-go build -buildmode=c-shared -o ../ncmdump_mobile/windows/runner/ncmdump.dll export.go
-go build -buildmode=c-shared -o ../ncmdump_mobile/linux/libncmdump.so export.go
+gomobile bind -target=android -androidapi 21 -o ../ncmdump_mobile/android/app/libs/ncmdump.aar ./mobile
+go build -buildmode=c-shared -o ../ncmdump_mobile/windows/runner/ncmdump.dll export.go ./desktop
+go build -buildmode=c-shared -o ../ncmdump_mobile/linux/libncmdump.so export.go ./desktop
 ````
 
 > **注意**：生成的 `ncmdump.aar` 文件必须放置在 `ncmdump_mobile/android/app/libs/` 目录下。
