@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -62,8 +63,6 @@ class FileListModel extends ChangeNotifier {
   int get totalFiles => _fileGroups.fold(0, (sum, group) => sum + group.files.length);
   bool get isEmpty => _fileGroups.isEmpty;
 
-  // [修改点] 移除了 MethodChannel，改用 NcmDumpService
-
   FileListModel() {
     _loadHistory();
   }
@@ -112,7 +111,7 @@ class FileListModel extends ChangeNotifier {
 
   // --- 权限逻辑 ---
   Future<bool> checkAndRequestPermission(BuildContext context) async {
-    // [修改点] Windows 平台不需要请求外部存储权限
+    // Windows 平台不需要请求外部存储权限
     if (Platform.isWindows || Platform.isLinux) return true;
 
     if (!Platform.isAndroid) return true;
@@ -131,7 +130,6 @@ class FileListModel extends ChangeNotifier {
       if (status.isGranted) return true;
     }
 
-    // [修复点] 检查 context.mounted 消除异步间隙警告
     if (context.mounted) {
       _showPermissionDialog(context);
     }
@@ -269,7 +267,6 @@ class FileListModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- [修改点] 处理逻辑整合了 Service ---
   Future<void> startProcessing(BuildContext context) async {
     if (isEmpty) return;
     _isFinished = false;
@@ -279,7 +276,7 @@ class FileListModel extends ChangeNotifier {
     _isProcessing = true;
     notifyListeners();
 
-    // [修改点] 目录适配：Windows 传空字符串由 Go 后端处理为源目录；Android 默认传 Music
+    // 目录适配：Windows 传空字符串由 Go 后端处理为源目录；Android 默认传 Music
     String defaultDir = (Platform.isWindows || Platform.isLinux) ? "" : "/storage/emulated/0/Music";
     String targetDir = _outputDirectory ?? defaultDir;
 
@@ -303,7 +300,7 @@ class FileListModel extends ChangeNotifier {
         file.errorMessage = "";
         notifyListeners();
 
-        // [修改点] 调用统一的 Service，自动识别平台
+        // 调用统一的 Service，自动识别平台
         String? error = await NcmDumpService.convertFile(file.path, targetDir);
         
         if (error == null) {
@@ -333,7 +330,22 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
+        //设置字体回退，解决 Windows 上中文显示为日文字形的问题
+        fontFamilyFallback: const ["Microsoft YaHei", "SimHei", "Noto Sans SC"],
       ),
+      
+      //本地化配置
+      locale: const Locale('zh', 'CN'), // 显式指定中文
+      supportedLocales: const [
+        Locale('zh', 'CN'), // 简体中文
+        //Locale('en', 'US'), // 英文
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
       home: const HomePage(),
     );
   }
@@ -373,7 +385,6 @@ class HomePage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.folder_open),
             title: Tooltip(
-              // [修改点] 动态提示文本，适配 Windows
               message: model.outputDirectory ?? 
                   ((Platform.isWindows || Platform.isLinux) ? "默认：源文件所在目录" : "默认：Music 文件夹"),
               child: Text(
@@ -382,14 +393,14 @@ class HomePage extends StatelessWidget {
                     : _compactPath(model.outputDirectory!),
                 style: TextStyle(
                   color: model.outputDirectory == null ? Colors.grey[700] : Colors.black,
-                  fontStyle: model.outputDirectory == null ? FontStyle.italic : FontStyle.normal,
+                  // [修改点] 将 FontStyle.italic 改为 normal，避免在桌面端看起来非常倾斜模糊
+                  fontStyle: FontStyle.normal, 
                 ),
               ),
             ),
             subtitle: const Text("点击切换输出目录"),
             onTap: model.isProcessing ? null : () async {
               if (await model.checkAndRequestPermission(context)) {
-                // [修复点] 添加 mounted 检查
                 if (!context.mounted) return;
                 
                 String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
@@ -491,7 +502,6 @@ class HomePage extends StatelessWidget {
               color: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(
-                  // [修复点] 使用 withValues 替代 withOpacity
                   color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, -5),
@@ -529,12 +539,10 @@ class HomePage extends StatelessWidget {
                         label: const Text("添加目录"),
                         onPressed: model.isProcessing ? null : () async {
                            if (await model.checkAndRequestPermission(context)) {
-                             // [修复点] 再次检查 mounted
                              if (!context.mounted) return;
 
                              String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
                              if (selectedDirectory != null) {
-                               // [修复点] 再次检查 mounted，因为 getDirectoryPath 也是异步的
                                if (!context.mounted) return;
                                await model.scanDirectory(selectedDirectory, context);
                              }
