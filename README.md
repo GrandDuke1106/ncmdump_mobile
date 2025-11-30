@@ -1,10 +1,10 @@
 # ncmdump-mobile
 
-这是一个基于 Flutter 开发的安卓应用，为 [ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go) 提供了现代化的移动端图形界面。
+这是一个基于 Flutter 开发的应用，为 [ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go) 提供了现代化的移动端图形界面。
 
-非手机端也可以使用[ncmdump-gui](https://git.taurusxin.com/taurusxin/ncmdump-gui)。
+Windows端也可以使用[ncmdump-gui](https://git.taurusxin.com/taurusxin/ncmdump-gui)。本程序的ui完全为手机设计，桌面端（Windows, Linux) 可能用得不顺手，不过相同的后端功能都一样。
 
-它可以帮助你在 Android 设备上直接将网易云音乐的 `.ncm` 文件转换为普通的 `.mp3` 或 `.flac` 格式，并自动补全专辑封面等元数据。
+它可以帮助你在各种设备上直接将网易云音乐的 `.ncm` 文件转换为普通的 `.mp3` 或 `.flac` 格式，并自动补全专辑封面等元数据。
 
 ## ✨ 功能特性
 
@@ -21,7 +21,7 @@
 
 确保你已经安装了以下环境：
 * Flutter SDK
-* Go 1.18+
+* Go 1.24+
 * Android Studio & Android SDK
 * `gomobile` 工具:
     ```bash
@@ -30,22 +30,19 @@
     gomobile init
     ```
 
-### 2. 编译 Go 核心库 (.aar)
+### 2. 编译 Go 核心库
 
 本项目依赖 `ncmdump-go` 的核心逻辑。你需要先将 Go 代码编译为 Android, Windows 或者 Linux 的 `.aar`, `dll` 或者 `so` 库。
 
 在项目根目录执行：
 
 ```bash
-# 确保你已经编写了 mobile/bridge.go 桥接文件，当然mobile有一个现成的
 # 如果遇到 javac 报错，请检查 JAVA_HOME 环境变量
 cd exc
 gomobile bind -target=android -androidapi 21 -o ../ncmdump_mobile/android/app/libs/ncmdump.aar ./mobile
 go build -buildmode=c-shared -o ../ncmdump_mobile/windows/runner/ncmdump.dll export.go ./desktop
 go build -buildmode=c-shared -o ../ncmdump_mobile/linux/libncmdump.so export.go ./desktop
 ````
-
-> **注意**：生成的 `ncmdump.aar` 文件必须放置在 `ncmdump_mobile/android/app/libs/` 目录下。
 
 ### 3. 安装 Flutter 依赖
 
@@ -83,3 +80,4 @@ flutter build apk --release
 ## 🙏 致谢
 
 后端来自于：[ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go)
+
