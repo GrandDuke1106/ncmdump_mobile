@@ -321,7 +321,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
-        fontFamilyFallback: const ["Microsoft YaHei", "SimHei", "Noto Sans SC"],
+        fontFamilyFallback: const ["Noto Sans SC", "Microsoft YaHei", "SimHei"],
       ),
       locale: const Locale('zh', 'CN'),
       supportedLocales: const [
