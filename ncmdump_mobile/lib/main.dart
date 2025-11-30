@@ -355,7 +355,6 @@ class HomePage extends StatelessWidget {
         title: const Text('NCM 转换器'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          // [新增] 刷新按钮，用于桌面端备份或手动刷新
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: '重新扫描所有目录',
@@ -409,16 +408,30 @@ class HomePage extends StatelessWidget {
           
           Expanded(
             child: model.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.library_music, size: 64, color: Colors.black12),
-                        SizedBox(height: 16),
-                        Text("点击下方按钮添加，或使用右上角刷新历史", style: TextStyle(color: Colors.grey)),
-                      ],
+                // [修改点] 空状态现在也包裹在 RefreshIndicator 中，使其可下拉
+                ? RefreshIndicator(
+                    onRefresh: () => model.scanAllHistory(context),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(), // 强制可滚动，即使内容不足一屏
+                          child: Container(
+                            height: constraints.maxHeight, // 撑满高度，让 Center 生效
+                            alignment: Alignment.center,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.library_music, size: 64, color: Colors.black12),
+                                SizedBox(height: 16),
+                                Text("点击下方按钮添加，或下拉刷新历史记录", style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   )
+                // 非空状态，正常的 ListView
                 : RefreshIndicator(
                     onRefresh: () => model.scanAllHistory(context),
                     child: ListView.builder(
