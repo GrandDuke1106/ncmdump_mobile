@@ -51,7 +51,6 @@ jobs:
       # 如果你不想配置签名，确保 build.gradle 里的 signingConfigs 是可选的，或者删除这一步
       - name: Configure Keystore
         working-directory: ./ncmdump_mobile
-        if: secrets.ANDROID_KEYSTORE_BASE64 != ''
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
           echo "storePassword=${{ secrets.STORE_PASSWORD }}" > android/key.properties
