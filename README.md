@@ -1,8 +1,8 @@
 # ncmdump-mobile
 
-这是一个基于 Flutter 开发的应用，为 [ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go) 提供了现代化的移动端图形界面。
+这是一个基于 Flutter 开发的小玩具，为 [ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go) 提供了现代化的移动端图形界面。
 
-Windows端也可以使用[ncmdump-gui](https://git.taurusxin.com/taurusxin/ncmdump-gui)。本程序的ui完全为手机设计，桌面端（Windows, Linux) 可能用得不顺手，不过相同的后端功能都一样。
+Windows 端也可以使用[ncmdump-gui](https://git.taurusxin.com/taurusxin/ncmdump-gui)。本程序的 ui 完全为手机设计，桌面端（Windows, Linux）可能用得不顺手，不过相同的后端功能都一样。
 
 它可以帮助你在各种设备上直接将网易云音乐的 `.ncm` 文件转换为普通的 `.mp3` 或 `.flac` 格式，并自动补全专辑封面等元数据。
 
@@ -53,23 +53,28 @@ flutter pub get
 
 ### 4. 运行或打包
 
-连接你的 Android 设备或模拟器：
+连接你的需要调试的设备：
 
 ```bash
 # 调试运行
 flutter run
 
-# 打包 APK
-flutter build apk --release
+# 打包各个平台的软件
+flutter build apk --release --split-per-abi
+flutter build windows --release
+flutter build linux --release
 ```
 
 ## 📦 主要依赖库
 
-  * `file_picker`: 文件与目录选择
-  * `permission_handler`: Android 存储权限管理
-  * `provider`: 状态管理
-  * `shared_preferences`: 本地历史记录存储
-  * `device_info_plus`: 获取 Android 版本信息
+* **`ffi`**: 外部函数接口，用于调用 Go 编写的 `ncmdump` 核心动态库。
+* **`file_picker`**: 跨平台的文件与目录选择器。
+* **`permission_handler`**: 处理 Android 和 iOS 的运行时权限请求。
+* **`provider`**: 简单高效的应用状态管理。
+* **`shared_preferences`**: 本地持久化存储，用于保存目录扫描历史。
+* **`device_info_plus`**: 获取设备信息，用于适配不同 Android 版本的权限策略。
+* **`path_provider`**: 获取各平台的常用文件路径（如文档目录、临时目录）。
+* **`flutter_launcher_icons`** (Dev): 自动化生成和配置所有平台的应用启动图标。
 
 ## ⚖️ 免责声明
 

@@ -1,7 +1,7 @@
 name: ncmdump_mobile
-description: A new Flutter project.
+description: A mobile GUI for ncmdump-go, providing a modern graphical interface for ncmdump-go.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -15,7 +15,7 @@ dependencies:
   permission_handler: ^12.0.1
   path_provider: ^2.1.1
   provider: ^6.0.0
-  device_info_plus: ^9.0.0
+  device_info_plus: ^12.0.0
   shared_preferences: ^2.0.0
   ffi: ^2.1.0
 
@@ -23,6 +23,45 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.0
+
+flutter_launcher_icons:
+  # === Android 配置 (混合模式: 8.0+用透明, 旧版用不透明) ===
+  android: "ic_launcher"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon_transparent.png" # 前景：透明底
+  image_path_android: "assets/icon_opaque.png"            # 旧版安卓：不透明底
+
+  # === iOS 配置 (必须不透明) ===
+  ios: true
+  image_path_ios: "assets/icon_opaque.png"
+
+  # === macOS 配置 (桌面端图标) ===
+  macos:
+    generate: true
+    image_path: "assets/icon_opaque.png" # macOS 图标通常也不带透明边距，或者可以用 icon_transparent.png 视设计风格而定
+
+  # === Windows 配置 (推荐透明) ===
+  windows:
+    generate: true
+    image_path: "assets/icon_transparent.png"
+    icon_size: 48
+
+  # === Linux 配置 (推荐透明) ===
+  linux:
+    generate: true
+    image_path: "assets/icon_transparent.png"
+
+  # === Web 配置 (推荐透明) ===
+  web:
+    generate: true
+    image_path: "assets/icon_transparent.png"
+    background_color: "#0175C2" # 网页应用背景色
+    theme_color: "#0175C2"      # 浏览器地址栏颜色
+
+  # === 默认回退 (必须项) ===
+  image_path: "assets/icon_opaque.png"
 
 flutter:
   uses-material-design: true
