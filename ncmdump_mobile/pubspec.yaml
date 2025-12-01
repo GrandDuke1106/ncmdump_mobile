@@ -1,7 +1,7 @@
 name: ncmdump_mobile
 description: A mobile GUI for ncmdump-go, providing a modern graphical interface for ncmdump-go.
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.2.0+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
